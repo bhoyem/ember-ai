@@ -35,6 +35,16 @@ import { GoogleGenAI } from '@google/genai';
 const DEFAULT_MODEL = 'gemini-2.5-flash';
 const FALLBACK_MODEL = 'gemini-2.5-flash-lite';
 
+type GenerateResponseResult =
+    | {
+          ok: true;
+          text: string;
+      }
+    | {
+          ok: false;
+          error: string;
+      };
+
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function isModelNotFoundError(error: unknown) {
@@ -53,7 +63,7 @@ function isTemporaryGeminiError(error: unknown) {
     );
 }
 
-export async function generateResponse(prompt: string) {
+export async function generateResponse(prompt: string): Promise<GenerateResponseResult> {
     const primaryModel = process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
     const models = [primaryModel, FALLBACK_MODEL].filter(
         (model, index, allModels) => allModels.indexOf(model) === index,
@@ -61,7 +71,10 @@ export async function generateResponse(prompt: string) {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-        throw new Error('Missing GEMINI_API_KEY in .env.local.');
+        return {
+            ok: false,
+            error: 'Gemini is not configured for this deployment. Add GEMINI_API_KEY in Vercel project environment variables and redeploy.',
+        };
     }
 
     const client = new GoogleGenAI({
@@ -83,12 +96,16 @@ export async function generateResponse(prompt: string) {
                     ],
                 });
 
-                return result.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+                return {
+                    ok: true,
+                    text: result.candidates?.[0]?.content?.parts?.[0]?.text ?? '',
+                };
             } catch (error) {
                 if (isModelNotFoundError(error)) {
-                    throw new Error(
-                        `Gemini could not use model "${model}". Check GEMINI_MODEL in .env.local or run client.models.list() to see available models.`,
-                    );
+                    return {
+                        ok: false,
+                        error: `Gemini could not use model "${model}". Check GEMINI_MODEL in Vercel environment variables.`,
+                    };
                 }
 
                 if (isTemporaryGeminiError(error) && attempt === 1) {
@@ -100,14 +117,20 @@ export async function generateResponse(prompt: string) {
                     break;
                 }
 
-                throw error;
+                console.error(error);
+
+                return {
+                    ok: false,
+                    error: 'Gemini could not generate a response. Check the Vercel function logs for the server-side error.',
+                };
             }
         }
     }
 
-    throw new Error(
-        `Gemini is temporarily overloaded for ${models.join(
+    return {
+        ok: false,
+        error: `Gemini is temporarily overloaded for ${models.join(
             ' and ',
         )}. Please try again in a minute.`,
-    );
+    };
 }

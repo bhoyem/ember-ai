@@ -36,7 +36,12 @@ export default function Review() {
 
         try {
             const response = await generateResponse(combineInputs);
-            setGeminiResponse(response as string);
+            if (response.ok) {
+                setGeminiResponse(response.text);
+            } else {
+                setGeminiResponse('');
+                setErrorMessage(response.error);
+            }
         } catch (error) {
             console.warn(error instanceof Error ? error.message : error);
             setGeminiResponse('');

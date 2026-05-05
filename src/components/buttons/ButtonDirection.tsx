@@ -1,7 +1,7 @@
 interface ButtonDirectionType {
     text: string;
     active: boolean;
-    onClick: () => void;
+    onClick: () => void | Promise<void>;
 }
 
 export function ButtonDirection({ text, active, onClick }: ButtonDirectionType) {
