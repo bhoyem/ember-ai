@@ -64,7 +64,7 @@ function isTemporaryGeminiError(error: unknown) {
 }
 
 export async function generateResponse(prompt: string): Promise<GenerateResponseResult> {
-    const primaryModel = process.env.GEMINI_MODEL ?? DEFAULT_MODEL;
+    const primaryModel = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
     const models = [primaryModel, FALLBACK_MODEL].filter(
         (model, index, allModels) => allModels.indexOf(model) === index,
     );
@@ -88,12 +88,7 @@ export async function generateResponse(prompt: string): Promise<GenerateResponse
             try {
                 const result = await client.models.generateContent({
                     model,
-                    contents: [
-                        {
-                            role: 'user',
-                            parts: [{ text: prompt }],
-                        },
-                    ],
+                    contents: prompt,
                 });
 
                 return {
