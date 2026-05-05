@@ -19,6 +19,7 @@ export default function Review() {
     const [combineInputs, setCombineInputs] = useState<string>('');
     const [disabled, setDisabled] = useState<boolean>(true);
     const [geminiResponse, setGeminiResponse] = useState<string>('');
+    const [errorMessage, setErrorMessage] = useState<string>('');
     const [loading, setLoading] = useState<boolean>(false);
 
     useEffect(() => {
@@ -31,9 +32,22 @@ export default function Review() {
 
     const handleSubmit = async () => {
         setLoading(true);
-        const response = await generateResponse(combineInputs);
-        setLoading(false);
-        setGeminiResponse(response as string);
+        setErrorMessage('');
+
+        try {
+            const response = await generateResponse(combineInputs);
+            setGeminiResponse(response as string);
+        } catch (error) {
+            console.warn(error instanceof Error ? error.message : error);
+            setGeminiResponse('');
+            setErrorMessage(
+                error instanceof Error
+                    ? error.message
+                    : 'Something went wrong while generating a response.',
+            );
+        } finally {
+            setLoading(false);
+        }
     };
 
     const { copied, copy } = useCopy(combineInputs);
@@ -98,6 +112,8 @@ export default function Review() {
                             speedMultiplier={1}
                             className="mx-auto"
                         />
+                    ) : errorMessage ? (
+                        <p className="text-red-700">{errorMessage}</p>
                     ) : geminiResponse ? (
                         <MarkdownComponent markdownText={geminiResponse} />
                     ) : (
